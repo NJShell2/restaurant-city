@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant City - A Playfish Classic Reimagined</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">Restaurant City</div>
+    <div class="stat"><span class="label">Coins</span><span id="tb-coins">0</span></div>
+    <div class="stat"><span class="label">Level</span><span id="tb-level">1</span></div>
+    <div class="stat gp"><span class="label">Gourmet Points</span>
+      <div class="gpbar"><div id="tb-gpfill"></div></div><span id="tb-gplabel"></span>
+    </div>
+    <div class="stat"><span class="label">Popularity</span><span id="tb-pop">0</span> <span id="tb-stars"></span></div>
+    <button id="btn-sound" class="topbtn">Sound: on</button>
+    <button id="btn-settings" class="topbtn">Settings</button>
+  </header>
+  <div id="theme-banner"></div>
+  <div id="main">
+    <div id="stage">
+      <canvas id="game" width="960" height="640"></canvas>
+      <div id="toasts"></div>
+      <nav id="toolbar">
+        <button id="tab-design">Design</button>
+        <button id="tab-staff">Staff</button>
+        <button id="tab-menu">Menu</button>
+        <button id="tab-market">Market</button>
+        <button id="tab-theme">Holiday</button>
+        <button id="tab-help">Help</button>
+      </nav>
+    </div>
+    <aside id="side">
+      <section id="panel-design" class="panel">
+        <div id="design-tools"></div>
+        <div id="design-cats"></div>
+        <div id="design-items"></div>
+      </section>
+      <section id="panel-staff" class="panel" style="display:none"></section>
+      <section id="panel-menu" class="panel" style="display:none"></section>
+      <section id="panel-market" class="panel" style="display:none"></section>
+      <section id="panel-theme" class="panel" style="display:none"></section>
+      <section id="panel-help" class="panel" style="display:none">
+        <h3>How to play</h3>
+        <p><b>The loop:</b> design your restaurant, staff it, and watch your crew work.</p>
+        <ul>
+          <li><b>Customers</b> walk in through doors when you have a free table with chairs and a waiter on duty. Blocked doors turn them away instantly.</li>
+          <li><b>Waiters</b> seat guests, take orders, deliver food, and clear dirty tables.</li>
+          <li><b>Chefs</b> cook orders at stoves. Every chef needs a stove.</li>
+          <li><b>Janitors</b> clean toilets, repair arcade machines, and pick up trash.</li>
+          <li><b>Energy:</b> staff work ~4 hour shifts. Feed them snacks or let them rest. If everyone collapses, the restaurant closes.</li>
+          <li><b>Dishes:</b> learn recipes in the Menu tab with ingredients, then level dishes 1-10 for more Gourmet Points per plate.</li>
+          <li><b>Ingredients:</b> daily login streaks, the Market, your garden (level 6), and the wandering Gourmet King.</li>
+          <li><b>Design tab:</b> click an item, then click a tile to place it. Move and Sell tools rearrange for free (sell-back is 1/3).</li>
+          <li><b>Levels:</b> earn Gourmet Points per plate cleared. Level up for coins, bigger restaurants, more staff, and more menu slots.</li>
+          <li><b>Toilets</b> are needed from level 8. Dirty toilets send customers away angry.</li>
+          <li><b>Holiday tab:</b> seasonal decor and dishes change every month.</li>
+        </ul>
+        <p class="note">A tribute to Playfish's Restaurant City (2009-2012). All art drawn from scratch for this remake.</p>
+      </section>
+      <section id="panel-settings" class="panel" style="display:none"></section>
+    </aside>
+  </div>
+  <footer>A fan tribute to Playfish's Restaurant City (2009-2012). Not affiliated with EA or Playfish.</footer>
+</div>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
