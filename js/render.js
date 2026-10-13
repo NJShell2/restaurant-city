@@ -5,9 +5,11 @@ const RCV = { ox: 480, oy: 150, W: 960, H: 640 };
 
 function rc_resizeCanvas(canvas) {
   const r = canvas.getBoundingClientRect();
-  const scale = Math.min(r.width / RCV.W, r.height / RCV.H) || 1;
-  canvas.width = RCV.W; canvas.height = RCV.H;
+  const dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+  canvas.width = RCV.W * dpr; canvas.height = RCV.H * dpr;
   canvas.style.aspectRatio = RCV.W + '/' + RCV.H;
+  canvas._dpr = dpr;
+  const scale = Math.min(r.width / RCV.W, r.height / RCV.H) || 1;
   return scale;
 }
 
@@ -18,10 +20,19 @@ function rc_iso(x, y, gridSize) {
   return [ox + (x - y) * TW / 2, oy + (x + y) * TH / 2];
 }
 
-function rc_screenToTile(mx, my, gridSize) {
+function rc_toWorld(mx, my, view) {
+  // invert the zoom/pan world transform: logical screen coords -> world coords
+  const z = (view && view.zoom) || 1;
+  const px = (view && view.panX) || 0, py = (view && view.panY) || 0;
+  return [(mx - (RCV.W / 2 + px)) / z + RCV.W / 2,
+          (my - (RCV.H / 2 + py)) / z + RCV.H / 2];
+}
+
+function rc_screenToTile(mx, my, gridSize, view) {
+  const [wx, wy] = rc_toWorld(mx, my, view);
   const TW = CFG.TILE_W, TH = CFG.TILE_H;
   const ox = RCV.W / 2, oy = 150 - (gridSize * TH) / 4;
-  const dx = mx - ox, dy = my - oy;
+  const dx = wx - ox, dy = wy - oy;
   const x = (dx / (TW / 2) + dy / (TH / 2)) / 2;
   const y = (dy / (TH / 2) - dx / (TW / 2)) / 2;
   return [Math.floor(x), Math.floor(y)];
@@ -423,14 +434,54 @@ function rc_drawWallDecor(ctx, px, py, def, side) {
 }
 
 /* ---------- scene ---------- */
+// iso vertex of a tile: N/E/S/W corners of the diamond
+function rc_vert(x, y, n, which) {
+  const [px, py] = rc_iso(x, y, n);
+  const TW = CFG.TILE_W, TH = CFG.TILE_H;
+  if (which === 'N') return [px, py - TH / 2];
+  if (which === 'E') return [px + TW / 2, py];
+  if (which === 'S') return [px, py + TH / 2];
+  return [px - TW / 2, py]; // 'W'
+}
+
 function rc_drawScene(ctx, s, view, t) {
   const n = s.gridSize, TW = CFG.TILE_W, TH = CFG.TILE_H;
+  const dpr = (ctx.canvas && ctx.canvas._dpr) || 1;
+  if (ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   window.__rcThemeMonth = s.themeOverride || (new Date().getMonth() + 1);
   ctx.clearRect(0, 0, RCV.W, RCV.H);
-  // backdrop
+
+  // ---- warm diorama backdrop (screen space, not zoomed) ----
   const bg = ctx.createLinearGradient(0, 0, 0, RCV.H);
-  bg.addColorStop(0, '#1d2733'); bg.addColorStop(1, '#2e3d4f');
+  bg.addColorStop(0, '#fbeed3');
+  bg.addColorStop(0.55, '#f4dcae');
+  bg.addColorStop(1, '#e3ba85');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, RCV.W, RCV.H);
+
+  // ---- world transform: zoom + pan ----
+  ctx.save();
+  const z = view.zoom || 1, pzx = view.panX || 0, pzy = view.panY || 0;
+  ctx.translate(RCV.W / 2 + pzx, RCV.H / 2 + pzy);
+  ctx.scale(z, z);
+  ctx.translate(-RCV.W / 2, -RCV.H / 2);
+
+  // soft glow + ground apron under the restaurant
+  const [ccx, ccy] = rc_iso(n / 2 - 0.5, n / 2 - 0.5, n);
+  for (let i = 6; i >= 1; i--) {
+    ctx.fillStyle = 'rgba(255,250,235,' + (0.05 + (6 - i) * 0.02) + ')';
+    ctx.beginPath(); ctx.ellipse(ccx, ccy + 10, i * 58, i * 30, 0, 0, 7); ctx.fill();
+  }
+  ctx.fillStyle = '#d9b98c';
+  ctx.beginPath(); ctx.ellipse(ccx, ccy + 14, n * TW * 0.78, n * TH * 0.95, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#b98f5e'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.ellipse(ccx, ccy + 14, n * TW * 0.78, n * TH * 0.95, 0, 0, 7); ctx.stroke();
+  // a few cobble speckles on the apron
+  ctx.fillStyle = 'rgba(150,110,70,0.25)';
+  for (let i = 0; i < 26; i++) {
+    const a = (i * 2.399) % (Math.PI * 2), rr = 0.55 + ((i * 37) % 40) / 100;
+    const sx = ccx + Math.cos(a) * n * TW * 0.78 * rr, sy = ccy + 14 + Math.sin(a) * n * TH * 0.95 * rr;
+    ctx.beginPath(); ctx.ellipse(sx, sy, 7, 3.5, a, 0, 7); ctx.fill();
+  }
 
   const floor = FLOORS.find(f => f.id === s.floorId) || FLOORS[0];
   const wall = WALLPAPERS.find(f => f.id === s.wallId) || WALLPAPERS[0];
@@ -456,27 +507,33 @@ function rc_drawScene(ctx, s, view, t) {
       rc_diamond(ctx, px, py, TW - 10, TH - 5); ctx.stroke();
     }
   }
-  // back walls (north y=0, west x=0)
-  const wallH = 30;
+  // back walls: continuous strips along the true north and west boundary edges
+  const wallH = 34;
+  const northPts = [rc_vert(0, 0, n, 'W'), rc_vert(0, 0, n, 'N')];
+  for (let x = 0; x < n; x++) northPts.push(rc_vert(x, 0, n, 'E'));
+  const westPts = [rc_vert(0, 0, n, 'N'), rc_vert(0, 0, n, 'W')];
+  for (let y = 0; y < n; y++) westPts.push(rc_vert(0, y, n, 'S'));
   ctx.fillStyle = wall.color;
-  for (let x = 0; x < n; x++) {
-    const [px, py] = rc_iso(x, 0, n);
+  ctx.strokeStyle = wall.color; ctx.lineWidth = 2;
+  for (const pts of [northPts, westPts]) {
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+      ctx.beginPath();
+      ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+      ctx.lineTo(bx, by - wallH); ctx.lineTo(ax, ay - wallH);
+      ctx.closePath(); ctx.fill();
+    }
+    // top trim
+    ctx.strokeStyle = wall.trim || 'rgba(0,0,0,0.25)'; ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(px - TW / 2, py - TH / 2); ctx.lineTo(px + TW / 2, py - TH / 2);
-    ctx.lineTo(px + TW / 2, py - TH / 2 - wallH); ctx.lineTo(px - TW / 2, py - TH / 2 - wallH);
-    ctx.closePath(); ctx.fill();
-  }
-  for (let y = 0; y < n; y++) {
-    const [px, py] = rc_iso(0, y, n);
+    pts.forEach(([px, py], i) => { i ? ctx.lineTo(px, py - wallH) : ctx.moveTo(px, py - wallH); });
+    ctx.stroke();
+    // baseboard shadow at the floor line
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(px - TW / 2, py - TH / 2); ctx.lineTo(px - TW / 2, py + TH / 2);
-    ctx.lineTo(px - TW / 2, py + TH / 2 - wallH); ctx.lineTo(px - TW / 2, py - TH / 2 - wallH);
-    ctx.closePath(); ctx.fill();
-  }
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  for (let x = 0; x < n; x++) {
-    const [px, py] = rc_iso(x, 0, n);
-    ctx.fillRect(px - TW / 2, py - TH / 2 - wallH, TW, 4);
+    pts.forEach(([px, py], i) => { i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+    ctx.stroke();
+    ctx.strokeStyle = wall.color; ctx.lineWidth = 2;
   }
 
   // collect drawables: items + characters, painter's order
@@ -494,12 +551,12 @@ function rc_drawScene(ctx, s, view, t) {
     const [x, y] = k.split(',').map(Number);
     draws.push({ depth: x + y + 0.05, x, y, type: 'garden', g: s.garden[k] });
   }
-  for (const c of s.customers) draws.push({ depth: c.x + c.y + 0.1, type: 'customer', c });
+  for (const c of s.customers) draws.push({ depth: c.x + c.y + 0.1, x: c.x, y: c.y, type: 'customer', c });
   for (const st of s.staff) {
     if (st.resting) continue; // resting staff are off-screen
-    draws.push({ depth: st.x + st.y + 0.1, type: 'staff', c: st });
+    draws.push({ depth: st.x + st.y + 0.1, x: st.x, y: st.y, type: 'staff', c: st });
   }
-  if (s.gourmetKing) draws.push({ depth: s.gourmetKing.x + s.gourmetKing.y + 0.2, type: 'king', c: s.gourmetKing });
+  if (s.gourmetKing) draws.push({ depth: s.gourmetKing.x + s.gourmetKing.y + 0.2, x: s.gourmetKing.x, y: s.gourmetKing.y, type: 'king', c: s.gourmetKing });
   draws.sort((a, b) => a.depth - b.depth);
 
   for (const d of draws) {
@@ -594,6 +651,7 @@ function rc_drawScene(ctx, s, view, t) {
     ctx.strokeStyle = '#f2d13c'; ctx.lineWidth = 3;
     rc_diamond(ctx, px, py, TW, TH); ctx.stroke();
   }
+  ctx.restore(); // end world transform; below is screen space
   // closed banner
   if (s.closed) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
