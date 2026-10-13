@@ -66,6 +66,7 @@ function rc_initUI(s, view, canvas) {
     setTimeout(() => rc_toast(s, 'Welcome to your restaurant! Customers arrive at the door when you have a free table and a waiter on duty.'), 800);
     setTimeout(() => rc_toast(s, 'Your chef cooks, your waiter serves, all automatically. Use the Design tab to expand, the Staff tab to manage your crew.'), 6000);
     setTimeout(() => rc_toast(s, 'Learn new dishes in the Menu tab with ingredients from the Market, your garden, daily logins, and the Gourmet King.'), 12000);
+    setTimeout(() => rc_toast(s, 'Tip: drag the restaurant to look around, and use the + and - buttons to zoom.'), 18000);
     s.tutorial = 1;
   }
 }
