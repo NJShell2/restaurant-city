@@ -18,22 +18,48 @@ function rc_initUI(s, view, canvas) {
   rc_buildDesignPanel(s, view);
   rc_showPanel(s, 'design');
 
-  // ---- canvas mouse ----
-  const pos = e => {
+  // ---- canvas pointer: tap = click, drag = pan (mouse + touch) ----
+  const logicalPos = e => {
     const r = canvas.getBoundingClientRect();
     return [(e.clientX - r.left) * (RCV.W / r.width), (e.clientY - r.top) * (RCV.H / r.height)];
   };
-  canvas.addEventListener('mousemove', e => {
-    const [mx, my] = pos(e);
-    const [tx, ty] = rc_screenToTile(mx, my, s.gridSize);
-    view.hover = { x: tx, y: ty };
+  let pdown = null;
+  canvas.addEventListener('pointerdown', e => {
+    pdown = { x: e.clientX, y: e.clientY, moved: false };
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   });
-  canvas.addEventListener('mouseleave', () => { view.hover = null; });
-  canvas.addEventListener('click', e => {
-    const [mx, my] = pos(e);
-    const [tx, ty] = rc_screenToTile(mx, my, s.gridSize);
-    rc_canvasClick(s, view, tx, ty, mx, my);
+  canvas.addEventListener('pointermove', e => {
+    if (pdown) {
+      const dx = e.clientX - pdown.x, dy = e.clientY - pdown.y;
+      if (Math.hypot(dx, dy) > 10) {
+        const r = canvas.getBoundingClientRect();
+        view.panX = (view.panX || 0) + dx * (RCV.W / r.width);
+        view.panY = (view.panY || 0) + dy * (RCV.H / r.height);
+        pdown.x = e.clientX; pdown.y = e.clientY; pdown.moved = true;
+      }
+    } else {
+      const [lmx, lmy] = logicalPos(e);
+      const [tx, ty] = rc_screenToTile(lmx, lmy, s.gridSize, view);
+      view.hover = { x: tx, y: ty };
+    }
   });
+  const endPointer = e => {
+    if (pdown && !pdown.moved) {
+      const [lmx, lmy] = logicalPos(e);
+      const [wx, wy] = rc_toWorld(lmx, lmy, view);
+      const [tx, ty] = rc_screenToTile(lmx, lmy, s.gridSize, view);
+      rc_canvasClick(s, view, tx, ty, wx, wy);
+    }
+    pdown = null;
+  };
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', () => { pdown = null; });
+  canvas.addEventListener('pointerleave', () => { if (!pdown) view.hover = null; });
+
+  // ---- zoom controls ----
+  $('zoom-in').addEventListener('click', () => { view.zoom = Math.min(3, (view.zoom || 1) * 1.25); });
+  $('zoom-out').addEventListener('click', () => { view.zoom = Math.max(0.6, (view.zoom || 1) / 1.25); });
+  $('zoom-reset').addEventListener('click', () => { view.zoom = 1; view.panX = 0; view.panY = 0; });
 
   // ---- tutorial ----
   if (!s.tutorial) {
