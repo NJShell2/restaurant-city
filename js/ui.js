@@ -235,6 +235,22 @@ function rc_renderDesignItems(s, view, cat) {
       '<div class="icost">' + (locked ? 'Lvl ' + def.unlock : def.cost.toLocaleString() + ' coins') + '</div>' +
       (def.desc ? '<div class="idesc">' + def.desc + '</div>' : '') +
       (def.seasonal ? '<div class="seasonal-tag">' + def.themeName + '</div>' : '');
+    // thumbnail drawn with the game's own item art
+    if (def.kind !== '__floor' && def.kind !== '__wall' && !locked) {
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = 56; cv.height = 44; cv.className = 'thumb';
+        const c2 = cv.getContext('2d');
+        const full = rc_itemDefAny(def.id) || def;
+        if (full.kind === 'walldecor') rc_drawWallDecor(c2, 28, 52, full);
+        else if (full.kind === 'rug') {
+          c2.fillStyle = 'rgba(176,58,46,0.85)';
+          rc_diamond(c2, 28, 26, 48, 24); c2.fill();
+        }
+        else rc_drawItem(c2, 28, 40, full, null, s, 0);
+        card.insertBefore(cv, card.firstChild);
+      } catch (e) { /* thumbnail is decorative */ }
+    }
     if (locked) card.classList.add('locked');
     else card.addEventListener('click', () => {
       if (def.kind === '__floor') { const r = rc_setFloor(s, def.id.slice(6)); rc_toast(s, r.ok ? 'Floor installed!' : (r.why || 'Cannot')); return; }
