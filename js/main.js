@@ -17,10 +17,13 @@
   rc_resizeCanvas(canvas);
   window.addEventListener('resize', () => rc_resizeCanvas(canvas));
 
-  const view = { hover: null, ghostItem: null, tool: null, moving: null, selected: null };
+  const view = { hover: null, ghostItem: null, tool: null, moving: null, selected: null, zoom: 1, panX: 0, panY: 0 };
   window.__rcView = view;
 
   rc_initUI(s, view, canvas);
+
+  // small screens start zoomed in so tiles stay tappable; drag to pan
+  if (window.innerWidth && window.innerWidth < 700) { view.zoom = 1.7; }
 
   let last = performance.now(), saveT = 0;
   function frame(now) {
