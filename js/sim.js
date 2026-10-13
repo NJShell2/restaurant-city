@@ -287,12 +287,14 @@ function rc_fireStaff(s, id) {
   const severance = 200;
   if (s.coins < severance) return { ok: false, why: 'Severance pay is 200 coins' };
   s.coins -= severance;
+  rc_releaseCooking(s.staff[i]);
   s.staff.splice(i, 1);
   return { ok: true };
 }
 function rc_setRole(s, id, role) {
   const st = s.staff.find(st => st.id === id);
   if (!st) return;
+  rc_releaseCooking(st);
   st.role = role;
   st.shirt = role === 'chef' ? '#f5f5f5' : role === 'waiter' ? '#2e4053' : '#4a7d4f';
   st.state = 'idle'; st.carry = null; st.tx = null;
@@ -455,7 +457,12 @@ function rc_update(s, dt) {
       if (st.energy >= CFG.ENERGY_MAX) { st.resting = false; st.energy = CFG.ENERGY_MAX; }
     } else if (st.energy > 0 && (st.role === 'chef' || st.role === 'waiter' || st.role === 'janitor')) {
       st.energy = Math.max(0, st.energy - CFG.ENERGY_DRAIN_PER_SEC * dt);
-      if (st.energy <= 0) { st.resting = true; st.state = 'idle'; st.carry = null; rc_toast(s, st.name + ' collapsed from exhaustion! Let them rest.'); }
+      if (st.energy <= 0) {
+        if (st.carry) s.readyDishes.push(st.carry); // don't lose the dish
+        rc_releaseCooking(st);
+        st.resting = true; st.state = 'idle'; st.carry = null;
+        rc_toast(s, st.name + ' collapsed from exhaustion! Let them rest.');
+      }
       else anyWorking = true;
     }
   }
@@ -694,7 +701,7 @@ function rc_chefAI(s, st, dt, mult) {
   if (st.stove) {
     const t = rc_tileAt(s, st.stove.x, st.stove.y);
     const it = t ? itemById(t.itemId) : null;
-    if (!it || it.kind !== 'stove') { st.stove = null; st.cooking = null; }
+    if (!it || it.kind !== 'stove') { st.stove = null; rc_releaseCooking(st); }
   }
   if (!st.stove) {
     for (const k in s.tiles) {
@@ -856,10 +863,17 @@ function rc_gotoDt(s, st, x, y, dt) {
 }
 /* ---------------- save / load ---------------- */
 
+function rc_releaseCooking(st) {
+  // give the in-progress order back to the queue so another chef can take it
+  if (st.cooking) { st.cooking.chefId = null; st.cooking = null; }
+}
+
 function rc_serialize(s) {
-  const c = Object.assign({}, s);
+  // deep copy first: the scrub below must never touch live game objects
+  // (a previous shallow-copy version wiped chef cooking state every autosave).
+  const c = JSON.parse(JSON.stringify(s));
   delete c._toasts;
-  c.customers.forEach(c => { c.path = []; c.pathi = 0; });
+  c.customers.forEach(cu => { cu.path = []; cu.pathi = 0; });
   c.staff.forEach(st => { st.path = []; st.pathi = 0; st.tx = null; st.ty = null; st.cooking = null; st.stove = null; });
   for (const k in c.tiles) { delete c.tiles[k].chefId; delete c.tiles[k].inUse; }
   return JSON.stringify(c);
