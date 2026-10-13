@@ -114,10 +114,10 @@ const FLOORS = [
   { id: 'floor_dark', name: 'Dark Wood', cost: 1200, c1: '#7a5230', c2: '#68452a' },
 ];
 const WALLPAPERS = [
-  { id: 'wall_cream', name: 'Cream Walls', cost: 400, color: '#f2e3c6' },
-  { id: 'wall_red', name: 'Bistro Red', cost: 900, color: '#c0392b' },
-  { id: 'wall_blue', name: 'Ocean Blue', cost: 900, color: '#3f6f9e' },
-  { id: 'wall_green', name: 'Sage Green', cost: 900, color: '#7d9b6a' },
+  { id: 'wall_cream', name: 'Cream Walls', cost: 400, color: '#f2e3c6', trim: '#c9a878' },
+  { id: 'wall_red', name: 'Bistro Red', cost: 900, color: '#c0392b', trim: '#7a231a' },
+  { id: 'wall_blue', name: 'Ocean Blue', cost: 900, color: '#3f6f9e', trim: '#2a4a6a' },
+  { id: 'wall_green', name: 'Sage Green', cost: 900, color: '#7d9b6a', trim: '#556b46' },
 ];
 
 /* Generated staff names (the original hired Facebook friends; we generate a crew). */
