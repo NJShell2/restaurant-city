@@ -31,7 +31,7 @@ body {
 #stage { flex: 1; min-width: 0; position: relative; }
 #game {
   width: 100%; display: block; border-radius: 8px; cursor: pointer;
-  border: 3px solid #5e3a24; background: #1d2733;
+  border: 3px solid #5e3a24; background: #f4dcae; touch-action: none;
 }
 #toasts {
   position: absolute; top: 10px; left: 10px; right: 10px;
