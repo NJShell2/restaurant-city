@@ -16,7 +16,7 @@ function rc_resizeCanvas(canvas) {
 function rc_iso(x, y, gridSize) {
   const TW = CFG.TILE_W, TH = CFG.TILE_H;
   // center the grid horizontally; nudge up a bit for walls
-  const ox = RCV.W / 2, oy = 150 - (gridSize * TH) / 4;
+  const ox = RCV.W / 2, oy = 178 - (gridSize * TH) / 4;
   return [ox + (x - y) * TW / 2, oy + (x + y) * TH / 2];
 }
 
@@ -31,7 +31,7 @@ function rc_toWorld(mx, my, view) {
 function rc_screenToTile(mx, my, gridSize, view) {
   const [wx, wy] = rc_toWorld(mx, my, view);
   const TW = CFG.TILE_W, TH = CFG.TILE_H;
-  const ox = RCV.W / 2, oy = 150 - (gridSize * TH) / 4;
+  const ox = RCV.W / 2, oy = 178 - (gridSize * TH) / 4;
   const dx = wx - ox, dy = wy - oy;
   const x = (dx / (TW / 2) + dy / (TH / 2)) / 2;
   const y = (dy / (TH / 2) - dx / (TW / 2)) / 2;
@@ -47,7 +47,7 @@ function rc_diamond(ctx, px, py, w, h) {
 
 /* ---------- people ---------- */
 function rc_drawPerson(ctx, px, py, o) {
-  const s = o.sitting ? 0.85 : 1;
+  const s = (o.sitting ? 0.85 : 1) * 1.15; // chunky, readable characters
   const bob = o.walkPhase ? Math.sin(o.walkPhase) * 2 : 0;
   const base = py + bob * 0.3;
   // shadow
@@ -176,6 +176,13 @@ function rc_drawItem(ctx, px, py, def, tile, s, t) {
       ctx.fillRect(px - 26, py - 34, 6, 34); ctx.fillRect(px + 20, py - 34, 6, 34);
       ctx.fillStyle = '#8a5a30';
       ctx.fillRect(px - 28, py - 38, 10, 6); ctx.fillRect(px + 18, py - 38, 10, 6);
+      if (def.id === 'door_glass') {
+        // glass double doors between the posts
+        ctx.fillStyle = 'rgba(170,210,230,0.85)';
+        ctx.fillRect(px - 20, py - 34, 18, 30); ctx.fillRect(px + 2, py - 34, 18, 30);
+        ctx.strokeStyle = '#4a6a7a'; ctx.lineWidth = 2;
+        ctx.strokeRect(px - 20, py - 34, 18, 30); ctx.strokeRect(px + 2, py - 34, 18, 30);
+      }
       break;
     }
     case 'stove': {
@@ -373,7 +380,19 @@ function rc_drawDecor(ctx, px, py, def, t) {
   } else if (id === 't_pot_gold') {
     ctx.fillStyle = '#3a3a3a'; ctx.beginPath(); ctx.ellipse(px, py - 12, 12, 9, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#f2d13c'; ctx.beginPath(); ctx.ellipse(px, py - 16, 9, 4, 0, 0, 7); ctx.fill();
-  } else if (id === 't_beachball' || id === 't_umbrella' || id === 't_tiki_torch' || id === 't_luau_torch' || id === 't_heart_balloon' || id === 't_candle_table' || id === 't_witch_hat' || id === 't_fireworks') {
+  } else if (id === 't_tiki_torch' || id === 't_luau_torch') {
+    ctx.fillStyle = '#7a4a24'; ctx.fillRect(px - 2, py - 30, 4, 26);
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(px - 4, py - 34, 8, 6);
+    ctx.fillStyle = '#ff9a3c';
+    ctx.beginPath(); ctx.moveTo(px - 5, py - 34); ctx.quadraticCurveTo(px, py - 48, px + 5, py - 34); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath(); ctx.moveTo(px - 2.5, py - 34); ctx.quadraticCurveTo(px, py - 42, px + 2.5, py - 34); ctx.closePath(); ctx.fill();
+  } else if (id === 't_candle_table') {
+    ctx.fillStyle = '#8a5a30'; ctx.beginPath(); ctx.ellipse(px, py - 8, 12, 5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#f2e3c6'; ctx.fillRect(px - 3, py - 26, 6, 18);
+    ctx.fillStyle = '#ff9a3c';
+    ctx.beginPath(); ctx.moveTo(px - 3, py - 26); ctx.quadraticCurveTo(px, py - 36, px + 3, py - 26); ctx.closePath(); ctx.fill();
+  } else if (id === 't_beachball' || id === 't_umbrella' || id === 't_heart_balloon' || id === 't_witch_hat' || id === 't_fireworks') {
     // generic festive marker in the theme accent color
     const th = THEMES[(window.__rcThemeMonth || 10)];
     ctx.fillStyle = th ? th.accent : '#d94f6c';
@@ -408,6 +427,8 @@ function rc_drawWallDecor(ctx, px, py, def, side) {
   const w = 26, h = 20;
   ctx.fillRect(px - w / 2 - 2, wy - h / 2 - 2, w + 4, h + 4);
   const id = def.id;
+  const x0 = px - w / 2, y0 = wy - h / 2;
+  const dot = (x, y, r, c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
   if (id === 'painting' || id === 't_spooky_painting' || id === 't_love_painting' || id === 't_pilgrim_art') {
     ctx.fillStyle = id === 't_spooky_painting' ? '#2b2b3a' : id === 't_love_painting' ? '#f7dfe6' : '#bcd3e8';
     ctx.fillRect(px - w / 2, wy - h / 2, w, h);
@@ -423,13 +444,86 @@ function rc_drawWallDecor(ctx, px, py, def, side) {
   } else if (id === 'darts') {
     const cols = ['#222', '#f5f5f5', '#c0392b'];
     for (let i = 3; i > 0; i--) { ctx.fillStyle = cols[i % 3]; ctx.beginPath(); ctx.arc(px, wy, i * 4, 0, 7); ctx.fill(); }
+  } else if (id === 't_autumn_wreath' || id === 't_harvest_wreath' || id === 't_wreath_winter') {
+    ctx.fillStyle = '#e8dcc0'; ctx.fillRect(x0, y0, w, h);
+    ctx.strokeStyle = id === 't_autumn_wreath' ? '#c96a2c' : '#2e7d4f';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(px, wy, 6.5, 0, 7); ctx.stroke();
+    dot(px, wy + 6.5, 2, '#d94f6c');
+    if (id === 't_wreath_winter') { dot(px - 4, wy - 4, 1.5, '#ffffff'); dot(px + 5, wy + 1, 1.5, '#ffffff'); }
+  } else if (id === 't_bunting' || id === 't_papel_picado' || id === 't_fiesta_banner') {
+    ctx.fillStyle = '#f7efdb'; ctx.fillRect(x0, y0, w, h);
+    const cols = id === 't_papel_picado' ? ['#d94f6c', '#f2d13c', '#3f6f9e'] : ['#d94f6c', '#f2b134', '#3fae5a', '#3f6f9e'];
+    ctx.strokeStyle = '#8a6a45'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 3); ctx.quadraticCurveTo(px, y0 + 10, x0 + w - 2, y0 + 3); ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const fx = x0 + 3 + i * (w - 6) / 4, fy = y0 + 5 + Math.sin(i / 4 * Math.PI) * 3;
+      ctx.fillStyle = cols[i % cols.length];
+      ctx.beginPath(); ctx.moveTo(fx - 2.5, fy); ctx.lineTo(fx + 2.5, fy); ctx.lineTo(fx, fy + 5); ctx.closePath(); ctx.fill();
+    }
+  } else if (id === 't_green_banner') {
+    ctx.fillStyle = '#2e7d4f'; ctx.fillRect(px - 6, y0, 12, h);
+    ctx.fillStyle = '#f2d13c'; ctx.fillRect(px - 6, y0, 12, 2); ctx.fillRect(px - 6, y0 + h - 2, 12, 2);
+    dot(px, wy, 4, '#f2d13c');
+  } else if (id === 't_fireworks') {
+    ctx.fillStyle = '#2b2b3a'; ctx.fillRect(x0, y0, w, h);
+    const cols = ['#f2d13c', '#d94f6c', '#7fb2d9', '#ffffff'];
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      ctx.strokeStyle = cols[i % 4]; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px, wy); ctx.lineTo(px + Math.cos(a) * 8, wy + Math.sin(a) * 8); ctx.stroke();
+    }
+    dot(px, wy, 2, '#ffffff');
+  } else if (id === 't_hibiscus' || id === 't_spring_garland') {
+    ctx.fillStyle = '#f7efdb'; ctx.fillRect(x0, y0, w, h);
+    ctx.strokeStyle = '#3fae5a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 6); ctx.quadraticCurveTo(px, y0 + 16, x0 + w - 2, y0 + 6); ctx.stroke();
+    const cols = ['#e86a9a', '#f2d13c', '#d94f6c', '#e86a9a'];
+    for (let i = 0; i < 4; i++) dot(x0 + 4 + i * 6, y0 + 9 + (i % 2) * 3, 2.5, cols[i]);
+  } else if (id === 't_snowflake') {
+    ctx.fillStyle = '#bcd3e8'; ctx.fillRect(x0, y0, w, h);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const a = i * Math.PI / 3;
+      ctx.beginPath(); ctx.moveTo(px - Math.cos(a) * 7, wy - Math.sin(a) * 7);
+      ctx.lineTo(px + Math.cos(a) * 7, wy + Math.sin(a) * 7); ctx.stroke();
+    }
+  } else if (id === 't_stocking') {
+    ctx.fillStyle = '#f7efdb'; ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(px - 4, y0 + 2, 7, 10);
+    ctx.beginPath(); ctx.arc(px + 1, y0 + 12, 4.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(px - 4, y0 + 2, 7, 2.5);
+  } else if (id === 't_string_lights') {
+    ctx.fillStyle = '#2b2b3a'; ctx.fillRect(x0, y0, w, h);
+    ctx.strokeStyle = '#555555'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0 + 2, y0 + 4); ctx.quadraticCurveTo(px, y0 + 12, x0 + w - 2, y0 + 4); ctx.stroke();
+    const cols = ['#f2d13c', '#d94f6c', '#7fb2d9', '#3fae5a'];
+    for (let i = 0; i < 6; i++) dot(x0 + 3 + i * 4, y0 + 6 + Math.sin(i / 5 * Math.PI) * 3, 1.8, cols[i % 4]);
+  } else if (id === 't_surfboard') {
+    ctx.fillStyle = '#f7efdb'; ctx.fillRect(x0, y0, w, h);
+    ctx.fillStyle = '#3f6f9e';
+    ctx.beginPath(); ctx.ellipse(px, wy, 5, 9, 0.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#f2d13c'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px - 3, y0 + 3); ctx.lineTo(px + 2, y0 + h - 3); ctx.stroke();
+  } else if (id === 't_tiki_mask') {
+    ctx.fillStyle = '#7a4a24';
+    ctx.beginPath(); ctx.ellipse(px, wy, 7, 9, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2b1a12';
+    ctx.beginPath(); ctx.arc(px - 3, wy - 2, 1.8, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + 3, wy - 2, 1.8, 0, 7); ctx.fill();
+    ctx.fillRect(px - 4, wy + 3, 8, 2);
   } else {
-    // generic wall hanging in theme accent
+    // striped poster: intentional-looking generic wall art
+    ctx.fillStyle = '#f2e3c6'; ctx.fillRect(x0, y0, w, h);
     const th = THEMES[(window.__rcThemeMonth || 10)];
-    ctx.fillStyle = th ? th.accent2 : '#f2e3c6';
-    ctx.fillRect(px - w / 2, wy - h / 2, w, h);
     ctx.fillStyle = th ? th.accent : '#c0392b';
-    ctx.beginPath(); ctx.arc(px, wy, 5, 0, 7); ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x0 + i * 9, y0 + h); ctx.lineTo(x0 + 6 + i * 9, y0 + h);
+      ctx.lineTo(x0 + 12 + i * 9, y0); ctx.lineTo(x0 + 6 + i * 9, y0);
+      ctx.closePath(); ctx.fill();
+    }
   }
 }
 
