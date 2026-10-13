@@ -875,6 +875,9 @@ function rc_serialize(s) {
   delete c._toasts;
   c.customers.forEach(cu => { cu.path = []; cu.pathi = 0; });
   c.staff.forEach(st => { st.path = []; st.pathi = 0; st.tx = null; st.ty = null; st.cooking = null; st.stove = null; });
+  // orders are re-claimed fresh after load; never persist a stale chef claim
+  // (a persisted chefId would block the queue forever since no chef owns it)
+  c.cookQueue.forEach(q => { q.chefId = null; q.progress = 0; });
   for (const k in c.tiles) { delete c.tiles[k].chefId; delete c.tiles[k].inUse; }
   return JSON.stringify(c);
 }
