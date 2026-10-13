@@ -22,8 +22,13 @@
 
   rc_initUI(s, view, canvas);
 
-  // small screens start zoomed in so tiles stay tappable; drag to pan
-  if (window.innerWidth && window.innerWidth < 700) { view.zoom = 1.7; }
+  // small screens start zoomed in so tiles stay tappable; drag to pan.
+  // Center the initial view on the dining area (not the grid's math center).
+  if (window.innerWidth && window.innerWidth < 700) {
+    view.zoom = 1.5;
+    view.panX = 0;
+    view.panY = (RCV.H / 2 - 250) * view.zoom;
+  }
 
   let last = performance.now(), saveT = 0;
   function frame(now) {
